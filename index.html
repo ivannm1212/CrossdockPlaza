@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icon.svg">
+<title>CrossDock Despacho</title>
+<style>
+:root{--acc:#00e07a;--glass:rgba(255,255,255,.06);--line:rgba(255,255,255,.12)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;min-height:100%;color:#f5f7fa;font-family:"Inter","SF Pro Display",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;overscroll-behavior:none;
+  background-color:#000;background-image:radial-gradient(900px 520px at 8% -8%,rgba(0,224,122,.14),transparent 62%),radial-gradient(760px 520px at 100% 0,rgba(56,189,248,.09),transparent 60%);background-attachment:fixed;background-repeat:no-repeat}
+button,select,input{font:inherit;color:inherit}
+option{background:#111;color:#fff}
+#main{max-width:1000px;margin:0 auto;padding:max(14px,env(safe-area-inset-top)) 14px 110px}
+.hd{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;padding:4px 2px 16px}
+.hd h1{margin:0;font-size:17px;font-weight:800;letter-spacing:.22em}
+.hd h1::before{content:"";display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--acc);box-shadow:0 0 12px var(--acc);margin-right:10px}
+.ck{font-size:22px;font-weight:700;letter-spacing:.04em;font-variant-numeric:tabular-nums;background:var(--glass);border:1px solid var(--line);border-radius:999px;padding:6px 16px}
+.bar-t{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+.b{border:1px solid var(--line);border-radius:999px;padding:12px 18px;font-size:16px;font-weight:700;background:var(--glass);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);cursor:pointer;transition:transform .1s}
+.b:active{transform:scale(.95)}
+.b.on{background:var(--acc);color:#00140a;border-color:transparent;box-shadow:0 0 22px rgba(0,224,122,.35)}
+.b.ok{background:#10b981;color:#02261b;border-color:transparent}
+.b.no{background:rgba(239,68,68,.15);color:#fca5a5;border-color:rgba(239,68,68,.45)}
+.b.gr{background:var(--glass)}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+@media(min-width:640px){.grid{grid-template-columns:repeat(3,1fr)}}
+@media(min-width:900px){.grid{grid-template-columns:repeat(5,1fr)}}
+.card{position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;min-height:132px;padding:10px 6px 16px;cursor:pointer;
+  background:linear-gradient(160deg,rgba(255,255,255,.09),rgba(255,255,255,.02) 60%);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  border:2px solid color-mix(in srgb,var(--c) 85%,transparent);border-radius:24px;
+  box-shadow:0 12px 34px -12px color-mix(in srgb,var(--c) 65%,transparent),inset 0 1px 0 rgba(255,255,255,.12)}
+.card:active{transform:scale(.96)}
+.card.ro{cursor:default}.card.ro:active{transform:none}
+.card.empty{opacity:.28;box-shadow:none;border-color:var(--line)}
+.pn{font-size:58px;font-weight:800;line-height:.95;letter-spacing:-.04em}
+.sn{font-size:22px;font-weight:800;line-height:1;color:var(--c);background:color-mix(in srgb,var(--c) 16%,transparent);border-radius:999px;padding:5px 14px;letter-spacing:.02em}
+.es{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.08em}
+.pr{position:absolute;top:8px;right:10px;font-size:20px;font-weight:900;background:rgba(0,0,0,.45);border-radius:999px;padding:0 9px;line-height:1.35}
+.bar{position:absolute;left:25%;right:25%;bottom:6px;height:5px;border-radius:999px;box-shadow:0 0 12px var(--e)}
+.tvc .card{cursor:default;min-height:158px}.tvc .card:active{transform:none}
+.tvc .pn{font-size:64px}.tvc .sn{font-size:44px;padding:4px 20px}
+.urgency{animation:urgency-blink 1s ease-in-out infinite}
+@keyframes urgency-blink{0%,100%{transform:scale(1);box-shadow:0 0 0 0 rgba(239,68,68,.9)}50%{transform:scale(1.05);box-shadow:0 0 32px 12px rgba(239,68,68,.95)}}
+.pulse-load{animation:load-pulse 1.4s ease-in-out infinite}
+@keyframes load-pulse{0%,100%{box-shadow:0 0 6px 0 rgba(59,130,246,.5)}50%{box-shadow:0 0 28px 8px rgba(59,130,246,.95)}}
+.sparkles{position:absolute;inset:0;pointer-events:none;overflow:hidden;border-radius:22px}
+.sparkles::after{content:"";position:absolute;inset:-50%;background:linear-gradient(115deg,transparent 40%,color-mix(in srgb,var(--c) 45%,transparent) 50%,transparent 60%);animation:sweep 2.6s linear infinite}
+.sparkles i{position:absolute;width:16px;height:16px;background:var(--c);clip-path:polygon(50% 0,60% 40%,100% 50%,60% 60%,50% 100%,40% 60%,0 50%,40% 40%);opacity:0;animation:glint 1.8s ease-in-out infinite}
+.sparkles i:nth-child(even){background:#fff}
+.sparkles i:nth-child(1){top:8%;left:10%}.sparkles i:nth-child(2){top:16%;left:80%;animation-delay:.3s}
+.sparkles i:nth-child(3){top:45%;left:6%;animation-delay:.9s}.sparkles i:nth-child(4){top:50%;left:88%;animation-delay:1.2s}
+.sparkles i:nth-child(5){top:72%;left:18%;animation-delay:.6s}.sparkles i:nth-child(6){top:78%;left:70%;animation-delay:1.5s}
+.sparkles i:nth-child(7){top:30%;left:45%;animation-delay:1.1s}.sparkles i:nth-child(8){top:88%;left:45%;animation-delay:.2s}
+@keyframes glint{0%,100%{opacity:0;transform:scale(.2) rotate(0)}50%{opacity:1;transform:scale(1.5) rotate(45deg)}}
+@keyframes sweep{from{transform:translateX(-30%)}to{transform:translateX(30%)}}
+.panel{background:var(--glass);border:1px solid var(--line);border-radius:24px;padding:14px;margin-bottom:14px;display:flex;flex-direction:column;gap:12px;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+.subc{border:2px solid color-mix(in srgb,var(--c) 85%,transparent);border-radius:24px;background:linear-gradient(160deg,rgba(255,255,255,.07),rgba(255,255,255,.02));padding:14px;margin-bottom:12px;display:flex;flex-direction:column;gap:12px;box-shadow:0 12px 34px -14px color-mix(in srgb,var(--c) 60%,transparent)}
+.subc .nm{font-size:30px;font-weight:800;color:var(--c);letter-spacing:-.01em}
+.rw{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.ol{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.ob,.eb{border-radius:16px;border:2px solid color-mix(in srgb,var(--c) 80%,transparent);background:transparent;color:var(--c);font-weight:800;cursor:pointer}
+.ob{height:48px;font-size:12px}.eb{height:56px;font-size:14px}
+.ob.s,.eb.s{background:var(--c);color:#04070a;box-shadow:0 0 18px color-mix(in srgb,var(--c) 55%,transparent)}
+.fld{height:56px;width:100%;border-radius:16px;border:1px solid var(--line);background:rgba(255,255,255,.06);padding:0 14px;font-size:20px;font-weight:700;outline:none}
+.fld:focus{border-color:var(--acc)}
+.fab{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom));border:0;border-radius:999px;background:var(--acc);color:#00140a;font-size:19px;font-weight:800;padding:16px 26px;box-shadow:0 8px 30px rgba(0,224,122,.45);cursor:pointer}
+#modal{position:fixed;inset:0;z-index:20;background:rgba(0,0,0,.72);backdrop-filter:blur(4px);display:flex;align-items:flex-end;justify-content:center}
+#modal[hidden],#tv[hidden],#main[hidden],#toast[hidden]{display:none}
+.mb{width:100%;max-width:520px;max-height:92vh;overflow:auto;background:rgba(14,16,18,.94);border:1px solid var(--line);border-bottom:0;border-radius:28px 28px 0 0;padding:18px;display:flex;flex-direction:column;gap:14px}
+.mb h2{margin:0;font-size:26px;letter-spacing:-.02em}.lb{font-size:11px;font-weight:800;color:#8b97a5;letter-spacing:.12em;margin-bottom:6px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:8px}.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+#toast{position:fixed;left:50%;top:max(12px,env(safe-area-inset-top));transform:translateX(-50%);z-index:30;background:var(--acc);color:#00140a;font-size:18px;font-weight:800;padding:12px 22px;border-radius:999px;box-shadow:0 10px 30px rgba(0,224,122,.4);max-width:94vw;text-align:center}
+#tv{position:fixed;inset:0;overflow:auto;padding:16px;background-color:#000;background-image:radial-gradient(900px 520px at 8% -8%,rgba(0,224,122,.14),transparent 62%),radial-gradient(760px 520px at 100% 0,rgba(56,189,248,.09),transparent 60%);background-attachment:fixed;background-repeat:no-repeat}
+.tvh{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:4px 4px 18px}
+.tvh .t{font-size:26px;font-weight:800;letter-spacing:.22em}.tvh .ck{font-size:80px;line-height:1;background:none;border:0;padding:0;font-weight:800;letter-spacing:-.02em}
+.ur{display:inline-block;background:#dc2626;border-radius:999px;padding:4px 18px;font-size:30px;font-weight:900;margin-bottom:10px;box-shadow:0 0 24px rgba(239,68,68,.6)}
+.tvc .grid{grid-template-columns:repeat(3,1fr)}@media(min-width:900px){.tvc .grid{grid-template-columns:repeat(5,1fr)}}
+.em{color:#9aa6b2;font-weight:600}
+</style>
+</head>
+<body>
+<div id="main"></div>
+<div id="tv" hidden></div>
+<div id="modal" hidden></div>
+<div id="toast" hidden></div>
+
+<script type="module">
+/* =====================================================================
+   CROSSDOCK DESPACHO — un solo HTML, sin dependencias.
+   MODO ONLINE CON FIREBASE (cuando quieras activarlo):
+   1) Creá un proyecto en Firebase y una base Firestore.
+   2) Registrá una app web y pegá su configuración en FIREBASE_CONFIG.
+   3) Authentication → habilitá "Anónimo" y "Correo/contraseña" y creá
+      los usuarios editores (vos y tus líderes).
+   4) Firestore → Reglas: ver la guía (solo los editores escriben).
+   5) Publicá con Firebase Hosting (firebase deploy).
+   Sin sesión = solo lectura (celulares del equipo y TV).
+   Mientras FIREBASE_CONFIG sea null, funciona 100% local (localStorage).
+   Toda la persistencia pasa por el objeto DB: no hay que tocar la interfaz.
+   ===================================================================== */
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyB_HY5l_SFH9cIJvHP2M7dXfihMA0zINok",
+  authDomain: "abastdockpro.firebaseapp.com",
+  projectId: "abastdockpro",
+  storageBucket: "abastdockpro.firebasestorage.app",
+  messagingSenderId: "1034164098554",
+  appId: "1:1034164098554:web:6f8a408c7ef111ad210043"
+};
+
+// ---------- Constantes ----------
+const PUERTAS = []; for (let i = 16; i <= 42; i++) if (i !== 22 && i !== 40) PUERTAS.push(i); // 25 puertas
+const OLAS = { ROJA: '#ef4444', AMARILLA: '#facc15', AZUL: '#3b82f6', VERDE: '#22c55e' };
+const ESTADOS = { EN_ESPERA: ['En espera', '#94a3b8'], EN_PREPARACION: ['En preparación', '#facc15'], PROCESO_DE_CARGA: ['Proceso de carga', '#3b82f6'],
+  LIBERADO: ['Liberado', '#38bdf8'], DESPACHADO: ['Despachado', '#22c55e'], DEMORADO: ['Demorado', '#ef4444'] };
+const PRIOS = { NORMAL: ['Normal', '', '#94a3b8'], ALTA: ['Alta', '!', '#f97316'], URGENCIA: ['Urgencia', '!!', '#ef4444'] };
+const LLAMADO = ['EN_PREPARACION', 'PROCESO_DE_CARGA'];
+
+// ---------- Estado ----------
+const LS = { get: (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d } catch { return d } }, set: (k, v) => localStorage.setItem(k, JSON.stringify(v)) };
+let subs = LS.get('cd_subs', []), desp = LS.get('cd_despachos', []), cfg = LS.get('cd_config', { sound: true });
+let tab = 'puertas', form = null, ns = { nombre: '', ola: 'ROJA' }, tv = location.hash === '#/tv', inst = null, prev = null, online = false, canEdit = true;
+
+// ---------- Capa de datos (local + Firebase opcional) ----------
+const DB = {
+  fb: null,
+  saveLocal() { LS.set('cd_subs', subs); LS.set('cd_despachos', desp); LS.set('cd_config', cfg) },
+  async init() {
+    if (!FIREBASE_CONFIG) return;
+    try {
+      const B = 'https://www.gstatic.com/firebasejs/10.12.2/';
+      const { initializeApp } = await import(B + 'firebase-app.js');
+      const F = await import(B + 'firebase-firestore.js');
+      const AU = await import(B + 'firebase-auth.js');
+      const app = initializeApp(FIREBASE_CONFIG), db = F.getFirestore(app), auth = AU.getAuth(app);
+      this.fb = { db, F }; this.au = { auth, AU }; let listening = false, first = true;
+      const err = e => { console.error(e); toast('Sin permiso o sin conexión con Firebase') };
+      AU.onAuthStateChanged(auth, async u => {
+        if (!u) { try { await AU.signInAnonymously(auth) } catch (e) { err(e) } return } // por defecto: solo lectura
+        canEdit = !!u.email; online = true;
+        if (!canEdit && tab === 'subs') tab = 'puertas';
+        if (!listening) {
+          listening = true;
+          F.onSnapshot(F.collection(db, 'subs'), s => { subs = s.docs.map(d => d.data()); this.saveLocal(); render() }, err);
+          F.onSnapshot(F.collection(db, 'despachos'), s => {
+            desp = s.docs.map(d => d.data()); this.saveLocal();
+            if (first) { prev = null; first = false } // la primera carga no suena
+            render();
+          }, err);
+        }
+        render();
+      });
+    } catch (e) { console.error('Firebase:', e); toast('No se pudo conectar a Firebase (modo local)') }
+  },
+  login(email, pass) { return this.au.AU.signInWithEmailAndPassword(this.au.auth, email, pass) },
+  logout() { return this.au.AU.signOut(this.au.auth) },
+  deny() { toast('Sin permiso para editar') },
+  setSub(s) { this.saveLocal(); if (this.fb) this.fb.F.setDoc(this.fb.F.doc(this.fb.db, 'subs', s.id), s).catch(this.deny) },
+  delSub(id) { this.saveLocal(); if (this.fb) this.fb.F.deleteDoc(this.fb.F.doc(this.fb.db, 'subs', id)).catch(this.deny) },
+  setDesp(d) { this.saveLocal(); if (this.fb) this.fb.F.setDoc(this.fb.F.doc(this.fb.db, 'despachos', String(d.puerta)), d).catch(this.deny) },
+  delDesp(p) { this.saveLocal(); if (this.fb) this.fb.F.deleteDoc(this.fb.F.doc(this.fb.db, 'despachos', String(p))).catch(this.deny) },
+};
+
+// ---------- Utilidades ----------
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now() + '-' + Math.random().toString(36).slice(2));
+const subOf = id => subs.find(s => s.id === id), by = p => desp.find(d => d.puerta === p);
+const clock = () => new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+let ctx;
+function beeps() {
+  try {
+    ctx = ctx || new (window.AudioContext || window.webkitAudioContext)(); if (ctx.state === 'suspended') ctx.resume();
+    [880, 660].forEach((fr, i) => { const o = ctx.createOscillator(), g = ctx.createGain(), t = ctx.currentTime + i * .38;
+      o.type = 'sine'; o.frequency.value = fr; o.connect(g); g.connect(ctx.destination);
+      g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(.45, t + .03); g.gain.exponentialRampToValueAtTime(.0001, t + .32); o.start(t); o.stop(t + .35) });
+  } catch {}
+}
+let tt; function toast(m) { const t = $('#toast'); t.textContent = m; t.hidden = false; clearTimeout(tt); tt = setTimeout(() => t.hidden = true, 3500) }
+function detectCalls() { // aviso + sonido ante cada nuevo llamado
+  const m = {}; desp.forEach(d => m[d.puerta] = d.estado);
+  if (prev) desp.forEach(d => { if (LLAMADO.includes(d.estado) && prev[d.puerta] !== d.estado) {
+    const s = subOf(d.subId); toast(`📣 Puerta ${d.puerta} · ${s ? s.nombre : '—'} · ${ESTADOS[d.estado][0]}`); if (cfg.sound) beeps() } });
+  prev = m;
+}
+
+// ---------- Vistas ----------
+function card(p, d, isTv) {
+  const s = d && subOf(d.subId), col = s ? OLAS[s.ola] : '#334155', e = d && ESTADOS[d.estado];
+  const urg = d && d.prio === 'URGENCIA' && d.estado !== 'DESPACHADO', ro = isTv || !canEdit;
+  const cls = ['card', d ? '' : 'empty', ro && !isTv ? 'ro' : '', urg ? 'urgency' : '', d && d.estado === 'PROCESO_DE_CARGA' ? 'pulse-load' : ''].join(' ');
+  return `<${ro ? 'div' : 'button'} class="${cls}" ${ro ? '' : `data-act="edit" data-p="${p}"`} style="--c:${col}">` +
+    (d && d.prio !== 'NORMAL' ? `<span class="pr" style="color:${PRIOS[d.prio][2]}">${PRIOS[d.prio][1]}</span>` : '') +
+    `<span class="pn">${p}</span><span class="sn">${s ? esc(s.nombre) : '—'}</span>` +
+    (isTv && e ? `<span class="es" style="color:${e[1]}">${e[0]}</span>` : '') +
+    (e ? `<span class="bar" style="background:${e[1]};--e:${e[1]}"></span>` : '') +
+    (d && LLAMADO.includes(d.estado) ? `<span class="sparkles">${'<i></i>'.repeat(8)}</span>` : '') + `</${ro ? 'div' : 'button'}>`;
+}
+const olaPick = (v, act, id) => `<div class="ol">${Object.entries(OLAS).map(([k, c]) => `<button class="ob ${v === k ? 's' : ''}" style="--c:${c}" data-act="${act}" data-o="${k}" ${id ? `data-id="${id}"` : ''}>${k}</button>`).join('')}</div>`;
+
+function render() {
+  if (!canEdit && tab === 'subs') tab = 'puertas';
+  detectCalls();
+  $('#main').hidden = tv; $('#tv').hidden = !tv;
+  if (tv) return renderTv();
+  let h = `<div class="hd"><h1>CROSSDOCK DESPACHO ${online ? '· EN LÍNEA' : ''}${online && !canEdit ? ' · SOLO LECTURA' : ''}</h1><span class="ck">${clock()}</span></div><div class="bar-t">` +
+    `<button class="b ${tab === 'puertas' ? 'on' : ''}" data-act="tab" data-t="puertas">Puertas</button>` +
+    (canEdit ? `<button class="b ${tab === 'subs' ? 'on' : ''}" data-act="tab" data-t="subs">Subcanalizaciones</button>` : '') +
+    `<button class="b" data-act="snd">${cfg.sound ? '🔔 Sonido' : '🔕 Mudo'}</button><button class="b" data-act="tv">📺 TV</button>` +
+    (inst ? `<button class="b ok" data-act="inst">⬇ Instalar</button>` : '') +
+    (FIREBASE_CONFIG && online ? (canEdit ? `<button class="b" data-act="logout">🔓 Salir (editor)</button>` : `<button class="b on" data-act="login">🔒 Editar</button>`) : '') + `</div>`;
+  if (tab === 'puertas') {
+    h += `<div class="grid">${PUERTAS.map(p => card(p, by(p))).join('')}</div>${canEdit ? '<button class="fab" data-act="new">+ Nuevo despacho</button>' : ''}`;
+  } else {
+    h += `<div class="panel"><input class="fld" id="ns" style="text-transform:uppercase" maxlength="18" placeholder="Nueva sub (ej: SCO1)" value="${esc(ns.nombre)}">` +
+      olaPick(ns.ola, 'nola') + `<button class="b on" data-act="addsub">+ Agregar</button></div>`;
+    if (!subs.length) h += `<p class="em">Todavía no hay subcanalizaciones.</p>`;
+    h += [...subs].sort((a, b) => a.nombre.localeCompare(b.nombre)).map(s => `<div class="subc" style="--c:${OLAS[s.ola]}"><div class="rw"><span class="nm">${esc(s.nombre)}</span>` +
+      `<button class="b no" data-act="delsub" data-id="${s.id}">Eliminar</button></div>${olaPick(s.ola, 'sola', s.id)}</div>`).join('');
+  }
+  $('#main').innerHTML = h;
+}
+function renderTv() {
+  const urg = desp.filter(d => d.prio === 'URGENCIA' && d.estado !== 'DESPACHADO').sort((a, b) => a.puerta - b.puerta);
+  $('#tv').innerHTML = `<div class="tvc"><div class="tvh"><span class="t">CROSSDOCK DESPACHO</span><span class="ck">${clock()}</span><button class="b" style="background:transparent" data-act="xtv">ESC · Salir</button></div>` +
+    (urg.length ? `<div class="ur">!! URGENCIAS</div><div class="grid" style="margin-bottom:16px">${urg.map(d => card(d.puerta, d, true)).join('')}</div>` : '') +
+    `<div class="grid">${PUERTAS.map(p => card(p, by(p), true)).join('')}</div></div>`;
+}
+
+// ---------- Formulario de despacho ----------
+function openForm(p) {
+  if (!subs.length) { tab = 'subs'; render(); return toast('Primero creá una subcanalización') }
+  const d = p && by(p);
+  form = d ? { ...d, orig: d.puerta } : { puerta: p || PUERTAS.find(x => !by(x)) || PUERTAS[0], subId: subs[0].id, estado: 'EN_ESPERA', prio: 'NORMAL', orig: null };
+  drawForm();
+}
+function drawForm() {
+  const f = form, m = $('#modal'); m.hidden = false;
+  m.innerHTML = `<div class="mb"><h2>${f.orig ? 'Puerta ' + f.orig : 'Nuevo despacho'}</h2>` +
+    `<div><div class="lb">PUERTA</div><select class="fld" data-f="puerta">${PUERTAS.map(p => `<option value="${p}" ${p === f.puerta ? 'selected' : ''}>${p}</option>`).join('')}</select></div>` +
+    `<div><div class="lb">SUBCANALIZACIÓN</div><select class="fld" data-f="subId">${subs.map(s => `<option value="${s.id}" ${s.id === f.subId ? 'selected' : ''}>${esc(s.nombre)} · ${s.ola}</option>`).join('')}</select></div>` +
+    `<div><div class="lb">ESTADO</div><div class="g2">${Object.entries(ESTADOS).map(([k, e]) => `<button class="eb ${f.estado === k ? 's' : ''}" style="--c:${e[1]}" data-act="fe" data-v="${k}">${e[0]}</button>`).join('')}</div></div>` +
+    `<div><div class="lb">PRIORIDAD</div><div class="g3">${Object.entries(PRIOS).map(([k, p]) => `<button class="eb ${f.prio === k ? 's' : ''}" style="--c:${p[2]}" data-act="fp" data-v="${k}">${p[0]} ${p[1]}</button>`).join('')}</div></div>` +
+    `<div class="rw">${f.orig ? '<button class="b no" data-act="fdel">Quitar</button>' : ''}<button class="b gr" style="flex:1" data-act="fx">Cancelar</button><button class="b ok" style="flex:1" data-act="fok">Guardar</button></div></div>`;
+}
+const closeForm = () => { form = null; $('#modal').hidden = true };
+
+// ---------- Eventos ----------
+const A = {
+  login: () => { form = null; const m = $('#modal'); m.hidden = false;
+    m.innerHTML = `<div class="mb"><h2>Ingreso de editores</h2><div><div class="lb">CORREO</div><input class="fld" id="lgE" type="email" autocomplete="username"></div>` +
+      `<div><div class="lb">CLAVE</div><input class="fld" id="lgP" type="password" autocomplete="current-password"></div>` +
+      `<div class="rw"><button class="b gr" style="flex:1" data-act="fx">Cancelar</button><button class="b ok" style="flex:1" data-act="dologin">Entrar</button></div></div>` },
+  dologin: async () => { try { await DB.login($('#lgE').value.trim(), $('#lgP').value); closeForm(); toast('Sesión de editor iniciada') } catch { toast('Correo o clave incorrectos') } },
+  logout: async () => { await DB.logout(); toast('Volviste a modo solo lectura') },
+  edit: t => openForm(Number(t.dataset.p)), new: () => openForm(),
+  tab: t => { tab = t.dataset.t; render() },
+  snd: () => { cfg.sound = !cfg.sound; DB.saveLocal(); if (cfg.sound) beeps(); render() },
+  tv: () => { location.hash = '#/tv'; document.documentElement.requestFullscreen?.().catch(() => {}) }, xtv: () => exitTv(),
+  inst: () => { inst.prompt(); inst = null; render() },
+  nola: t => { ns.nombre = $('#ns').value; ns.ola = t.dataset.o; render() },
+  addsub: () => {
+    const nombre = $('#ns').value.trim().toUpperCase(); if (!nombre) return toast('Escribí el nombre');
+    if (subs.some(s => s.nombre === nombre)) return toast('Ya existe esa subcanalización');
+    const s = { id: uid(), nombre, ola: ns.ola }; subs.push(s); DB.setSub(s); ns.nombre = ''; render();
+  },
+  sola: t => { const s = subOf(t.dataset.id); s.ola = t.dataset.o; DB.setSub(s); render() },
+  delsub: t => { const s = subOf(t.dataset.id), u = desp.find(d => d.subId === s.id);
+    if (u) return toast(`${s.nombre} está en uso en la puerta ${u.puerta}`); subs = subs.filter(x => x !== s); DB.delSub(s.id); render() },
+  fe: t => { form.estado = t.dataset.v; drawForm() }, fp: t => { form.prio = t.dataset.v; drawForm() }, fx: closeForm,
+  fok: () => { const { orig, ...d } = form; d.puerta = Number(d.puerta);
+    if (orig && orig !== d.puerta) { desp = desp.filter(x => x.puerta !== orig); DB.delDesp(orig) }
+    desp = [...desp.filter(x => x.puerta !== d.puerta), d]; DB.setDesp(d); closeForm(); render() },
+  fdel: () => { desp = desp.filter(x => x.puerta !== form.orig); DB.delDesp(form.orig); closeForm(); render() },
+};
+const EDITA = ['edit', 'new', 'nola', 'addsub', 'sola', 'delsub', 'fe', 'fp', 'fok', 'fdel'];
+document.addEventListener('click', e => { const t = e.target.closest('[data-act]'); if (!t || !A[t.dataset.act]) return;
+  if (EDITA.includes(t.dataset.act) && !canEdit) return toast('Modo solo lectura: ingresá como editor');
+  A[t.dataset.act](t) });
+document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'lgP') A.dologin() });
+$('#modal').addEventListener('click', e => { if (e.target.id === 'modal') closeForm() });
+document.addEventListener('change', e => { const k = e.target.dataset?.f; if (k && form) form[k] = k === 'puerta' ? Number(e.target.value) : e.target.value });
+document.addEventListener('input', e => { if (e.target.id === 'ns') ns.nombre = e.target.value });
+
+function exitTv() {
+  if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
+  history.replaceState(null, '', location.pathname + location.search); tv = false; render();
+}
+addEventListener('hashchange', () => { tv = location.hash === '#/tv'; render() });
+addEventListener('keydown', e => { if (e.key === 'Escape' && tv) exitTv() });
+document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement && tv) exitTv() });
+addEventListener('beforeinstallprompt', e => { e.preventDefault(); inst = e; render() });
+addEventListener('storage', e => { // sincroniza pestañas del mismo dispositivo
+  if (e.key === 'cd_despachos' || e.key === 'cd_subs') { subs = LS.get('cd_subs', []); desp = LS.get('cd_despachos', []); render() } });
+setInterval(() => document.querySelectorAll('.ck').forEach(n => n.textContent = clock()), 1000);
+
+render(); DB.init();
+if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('./sw.js').catch(() => {});
+</script>
+</body>
+</html>

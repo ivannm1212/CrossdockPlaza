@@ -1,0 +1,11 @@
+{
+  "name": "CrossDock Despacho",
+  "short_name": "CrossDock",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "lang": "es",
+  "icons": [{ "src": "icon.svg", "sizes": "192x192 512x512", "type": "image/svg+xml", "purpose": "any maskable" }]
+}
