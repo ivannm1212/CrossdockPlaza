@@ -49,13 +49,6 @@ option{background:#111;color:#fff}
 @keyframes load-pulse{0%,100%{box-shadow:0 0 6px 0 rgba(59,130,246,.5)}50%{box-shadow:0 0 28px 8px rgba(59,130,246,.95)}}
 .sparkles{position:absolute;inset:0;pointer-events:none;overflow:hidden;border-radius:22px}
 .sparkles::after{content:"";position:absolute;inset:-50%;background:linear-gradient(115deg,transparent 40%,color-mix(in srgb,var(--c) 45%,transparent) 50%,transparent 60%);animation:sweep 2.6s linear infinite}
-.sparkles i{position:absolute;width:16px;height:16px;background:var(--c);clip-path:polygon(50% 0,60% 40%,100% 50%,60% 60%,50% 100%,40% 60%,0 50%,40% 40%);opacity:0;animation:glint 1.8s ease-in-out infinite}
-.sparkles i:nth-child(even){background:#fff}
-.sparkles i:nth-child(1){top:8%;left:10%}.sparkles i:nth-child(2){top:16%;left:80%;animation-delay:.3s}
-.sparkles i:nth-child(3){top:45%;left:6%;animation-delay:.9s}.sparkles i:nth-child(4){top:50%;left:88%;animation-delay:1.2s}
-.sparkles i:nth-child(5){top:72%;left:18%;animation-delay:.6s}.sparkles i:nth-child(6){top:78%;left:70%;animation-delay:1.5s}
-.sparkles i:nth-child(7){top:30%;left:45%;animation-delay:1.1s}.sparkles i:nth-child(8){top:88%;left:45%;animation-delay:.2s}
-@keyframes glint{0%,100%{opacity:0;transform:scale(.2) rotate(0)}50%{opacity:1;transform:scale(1.5) rotate(45deg)}}
 @keyframes sweep{from{transform:translateX(-30%)}to{transform:translateX(30%)}}
 .panel{background:var(--glass);border:1px solid var(--line);border-radius:24px;padding:14px;margin-bottom:14px;display:flex;flex-direction:column;gap:12px;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
 .subc{border:2px solid color-mix(in srgb,var(--c) 85%,transparent);border-radius:24px;background:linear-gradient(160deg,rgba(255,255,255,.07),rgba(255,255,255,.02));padding:14px;margin-bottom:12px;display:flex;flex-direction:column;gap:12px;box-shadow:0 12px 34px -14px color-mix(in srgb,var(--c) 60%,transparent)}
@@ -80,6 +73,15 @@ option{background:#111;color:#fff}
 .ur{display:inline-block;background:#dc2626;border-radius:999px;padding:4px 18px;font-size:30px;font-weight:900;margin-bottom:10px;box-shadow:0 0 24px rgba(239,68,68,.6)}
 .tvc .grid{grid-template-columns:repeat(3,1fr)}@media(min-width:900px){.tvc .grid{grid-template-columns:repeat(5,1fr)}}
 .em{color:#9aa6b2;font-weight:600}
+/* comentario, nombres completos y leyenda de TV */
+.sn{display:inline-block;white-space:nowrap}
+.cm{font-size:14px;font-weight:700;color:#e5e7eb;background:rgba(255,255,255,.1);border-radius:10px;padding:3px 10px;text-align:center;max-width:100%;word-break:break-word;line-height:1.2}
+.tvc .cm{font-size:24px;border-radius:14px}
+#tv{padding-bottom:100px}
+#tick{position:fixed;left:0;right:0;bottom:calc(14px + env(safe-area-inset-bottom));overflow:hidden;pointer-events:none;z-index:15}
+#tick[hidden]{display:none}
+#tick span{display:inline-block;white-space:nowrap;background:var(--acc);color:#00140a;font-size:34px;font-weight:900;padding:10px 32px;border-radius:999px;box-shadow:0 8px 30px rgba(0,224,122,.45);transform:translateX(100vw);animation:tick var(--per,20s) linear infinite}
+@keyframes tick{0%{transform:translateX(100vw)}65%,100%{transform:translateX(-100%)}}
 </style>
 </head>
 <body>
@@ -87,6 +89,7 @@ option{background:#111;color:#fff}
 <div id="tv" hidden></div>
 <div id="modal" hidden></div>
 <div id="toast" hidden></div>
+<div id="tick" hidden><span></span></div>
 
 <script type="module">
 /* =====================================================================
@@ -118,6 +121,8 @@ const ESTADOS = { EN_ESPERA: ['En espera', '#94a3b8'], EN_PREPARACION: ['En prep
   LIBERADO: ['Liberado', '#38bdf8'], DESPACHADO: ['Despachado', '#22c55e'], DEMORADO: ['Demorado', '#ef4444'] };
 const PRIOS = { NORMAL: ['Normal', '', '#94a3b8'], ALTA: ['Alta', '!', '#f97316'], URGENCIA: ['Urgencia', '!!', '#ef4444'] };
 const LLAMADO = ['EN_PREPARACION', 'PROCESO_DE_CARGA'];
+const LEYENDA_TV = 'Controle el correcto armado y enfilmado antes de llevar a dársenas'; // texto que pasa en el modo TV
+const LEYENDA_CADA_S = 20; // cada cuántos segundos vuelve a pasar
 
 // ---------- Estado ----------
 const LS = { get: (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d } catch { return d } }, set: (k, v) => localStorage.setItem(k, JSON.stringify(v)) };
@@ -183,7 +188,7 @@ let tt; function toast(m) { const t = $('#toast'); t.textContent = m; t.hidden =
 function detectCalls() { // aviso + sonido ante cada nuevo llamado
   const m = {}; desp.forEach(d => m[d.puerta] = d.estado);
   if (prev) desp.forEach(d => { if (LLAMADO.includes(d.estado) && prev[d.puerta] !== d.estado) {
-    const s = subOf(d.subId); toast(`📣 Puerta ${d.puerta} · ${s ? s.nombre : '—'} · ${ESTADOS[d.estado][0]}`); if (cfg.sound) beeps() } });
+    const s = subOf(d.subId); toast(`📣 Puerta ${d.puerta} · ${s ? s.nombre : '—'} · ${ESTADOS[d.estado][0]}${d.com ? ' · ' + d.com : ''}`); if (cfg.sound) beeps() } });
   prev = m;
 }
 
@@ -195,9 +200,10 @@ function card(p, d, isTv) {
   return `<${ro ? 'div' : 'button'} class="${cls}" ${ro ? '' : `data-act="edit" data-p="${p}"`} style="--c:${col}">` +
     (d && d.prio !== 'NORMAL' ? `<span class="pr" style="color:${PRIOS[d.prio][2]}">${PRIOS[d.prio][1]}</span>` : '') +
     `<span class="pn">${p}</span><span class="sn">${s ? esc(s.nombre) : '—'}</span>` +
+    (d && d.com ? `<span class="cm">${esc(d.com)}</span>` : '') +
     (isTv && e ? `<span class="es" style="color:${e[1]}">${e[0]}</span>` : '') +
     (e ? `<span class="bar" style="background:${e[1]};--e:${e[1]}"></span>` : '') +
-    (d && LLAMADO.includes(d.estado) ? `<span class="sparkles">${'<i></i>'.repeat(8)}</span>` : '') + `</${ro ? 'div' : 'button'}>`;
+    (d && LLAMADO.includes(d.estado) ? `<span class="sparkles"></span>` : '') + `</${ro ? 'div' : 'button'}>`;
 }
 const olaPick = (v, act, id) => `<div class="ol">${Object.entries(OLAS).map(([k, c]) => `<button class="ob ${v === k ? 's' : ''}" style="--c:${c}" data-act="${act}" data-o="${k}" ${id ? `data-id="${id}"` : ''}>${k}</button>`).join('')}</div>`;
 
@@ -205,7 +211,8 @@ function render() {
   if (!canEdit && tab === 'subs') tab = 'puertas';
   detectCalls();
   $('#main').hidden = tv; $('#tv').hidden = !tv;
-  if (tv) return renderTv();
+  $('#tick').hidden = !tv;
+  if (tv) { renderTv(); return fit() }
   let h = `<div class="hd"><h1>CROSSDOCK DESPACHO ${online ? '· EN LÍNEA' : ''}${online && !canEdit ? ' · SOLO LECTURA' : ''}</h1><span class="ck">${clock()}</span></div><div class="bar-t">` +
     `<button class="b ${tab === 'puertas' ? 'on' : ''}" data-act="tab" data-t="puertas">Puertas</button>` +
     (canEdit ? `<button class="b ${tab === 'subs' ? 'on' : ''}" data-act="tab" data-t="subs">Subcanalizaciones</button>` : '') +
@@ -221,7 +228,7 @@ function render() {
     h += [...subs].sort((a, b) => a.nombre.localeCompare(b.nombre)).map(s => `<div class="subc" style="--c:${OLAS[s.ola]}"><div class="rw"><span class="nm">${esc(s.nombre)}</span>` +
       `<button class="b no" data-act="delsub" data-id="${s.id}">Eliminar</button></div>${olaPick(s.ola, 'sola', s.id)}</div>`).join('');
   }
-  $('#main').innerHTML = h;
+  $('#main').innerHTML = h; fit();
 }
 function renderTv() {
   const urg = desp.filter(d => d.prio === 'URGENCIA' && d.estado !== 'DESPACHADO').sort((a, b) => a.puerta - b.puerta);
@@ -230,11 +237,19 @@ function renderTv() {
     `<div class="grid">${PUERTAS.map(p => card(p, by(p), true)).join('')}</div></div>`;
 }
 
+// Achica la letra de la subcanalización hasta que entre completa en su cuadro
+function fit() {
+  document.querySelectorAll('.card .sn').forEach(el => {
+    el.style.fontSize = ''; const card = el.closest('.card'); let fs = parseFloat(getComputedStyle(el).fontSize) || 20;
+    while (el.offsetWidth > card.clientWidth - 14 && fs > 11) { fs -= 1; el.style.fontSize = fs + 'px' }
+  });
+}
+
 // ---------- Formulario de despacho ----------
 function openForm(p) {
   if (!subs.length) { tab = 'subs'; render(); return toast('Primero creá una subcanalización') }
   const d = p && by(p);
-  form = d ? { ...d, orig: d.puerta } : { puerta: p || PUERTAS.find(x => !by(x)) || PUERTAS[0], subId: subs[0].id, estado: 'EN_ESPERA', prio: 'NORMAL', orig: null };
+  form = d ? { ...d, com: d.com || '', orig: d.puerta } : { puerta: p || PUERTAS.find(x => !by(x)) || PUERTAS[0], subId: subs[0].id, estado: 'EN_ESPERA', prio: 'NORMAL', com: '', orig: null };
   drawForm();
 }
 function drawForm() {
@@ -244,6 +259,7 @@ function drawForm() {
     `<div><div class="lb">SUBCANALIZACIÓN</div><select class="fld" data-f="subId">${subs.map(s => `<option value="${s.id}" ${s.id === f.subId ? 'selected' : ''}>${esc(s.nombre)} · ${s.ola}</option>`).join('')}</select></div>` +
     `<div><div class="lb">ESTADO</div><div class="g2">${Object.entries(ESTADOS).map(([k, e]) => `<button class="eb ${f.estado === k ? 's' : ''}" style="--c:${e[1]}" data-act="fe" data-v="${k}">${e[0]}</button>`).join('')}</div></div>` +
     `<div><div class="lb">PRIORIDAD</div><div class="g3">${Object.entries(PRIOS).map(([k, p]) => `<button class="eb ${f.prio === k ? 's' : ''}" style="--c:${p[2]}" data-act="fp" data-v="${k}">${p[0]} ${p[1]}</button>`).join('')}</div></div>` +
+    `<div><div class="lb">COMENTARIO ADICIONAL (OPCIONAL)</div><input class="fld" id="cm" maxlength="60" style="font-size:17px" placeholder="Ej: necesito 6 pallets" value="${esc(f.com)}"></div>` +
     `<div class="rw">${f.orig ? '<button class="b no" data-act="fdel">Quitar</button>' : ''}<button class="b gr" style="flex:1" data-act="fx">Cancelar</button><button class="b ok" style="flex:1" data-act="fok">Guardar</button></div></div>`;
 }
 const closeForm = () => { form = null; $('#modal').hidden = true };
@@ -271,7 +287,7 @@ const A = {
   delsub: t => { const s = subOf(t.dataset.id), u = desp.find(d => d.subId === s.id);
     if (u) return toast(`${s.nombre} está en uso en la puerta ${u.puerta}`); subs = subs.filter(x => x !== s); DB.delSub(s.id); render() },
   fe: t => { form.estado = t.dataset.v; drawForm() }, fp: t => { form.prio = t.dataset.v; drawForm() }, fx: closeForm,
-  fok: () => { const { orig, ...d } = form; d.puerta = Number(d.puerta);
+  fok: () => { const { orig, ...d } = form; d.puerta = Number(d.puerta); d.com = (d.com || '').trim();
     if (orig && orig !== d.puerta) { desp = desp.filter(x => x.puerta !== orig); DB.delDesp(orig) }
     desp = [...desp.filter(x => x.puerta !== d.puerta), d]; DB.setDesp(d); closeForm(); render() },
   fdel: () => { desp = desp.filter(x => x.puerta !== form.orig); DB.delDesp(form.orig); closeForm(); render() },
@@ -283,7 +299,7 @@ document.addEventListener('click', e => { const t = e.target.closest('[data-act]
 document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'lgP') A.dologin() });
 $('#modal').addEventListener('click', e => { if (e.target.id === 'modal') closeForm() });
 document.addEventListener('change', e => { const k = e.target.dataset?.f; if (k && form) form[k] = k === 'puerta' ? Number(e.target.value) : e.target.value });
-document.addEventListener('input', e => { if (e.target.id === 'ns') ns.nombre = e.target.value });
+document.addEventListener('input', e => { if (e.target.id === 'ns') ns.nombre = e.target.value; if (e.target.id === 'cm' && form) form.com = e.target.value });
 
 function exitTv() {
   if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
@@ -297,6 +313,8 @@ addEventListener('storage', e => { // sincroniza pestañas del mismo dispositivo
   if (e.key === 'cd_despachos' || e.key === 'cd_subs') { subs = LS.get('cd_subs', []); desp = LS.get('cd_despachos', []); render() } });
 setInterval(() => document.querySelectorAll('.ck').forEach(n => n.textContent = clock()), 1000);
 
+$('#tick span').textContent = LEYENDA_TV; $('#tick').style.setProperty('--per', LEYENDA_CADA_S + 's');
+addEventListener('resize', fit);
 render(); DB.init();
 if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('./sw.js').catch(() => {});
 </script>
