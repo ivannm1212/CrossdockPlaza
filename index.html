@@ -73,6 +73,7 @@ option{background:#111;color:#fff}
 .ur{display:inline-block;background:#dc2626;border-radius:999px;padding:4px 18px;font-size:30px;font-weight:900;margin-bottom:10px;box-shadow:0 0 24px rgba(239,68,68,.6)}
 .tvc .grid{grid-template-columns:repeat(3,1fr)}@media(min-width:900px){.tvc .grid{grid-template-columns:repeat(5,1fr)}}
 .em{color:#9aa6b2;font-weight:600}
+.ol5{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}.ol5 .ob{height:44px;font-size:11px;border-radius:14px}
 /* comentario, nombres completos y leyenda de TV */
 .sn{display:inline-block;white-space:nowrap}
 .cm{font-size:14px;font-weight:700;color:#e5e7eb;background:rgba(255,255,255,.1);border-radius:10px;padding:3px 10px;text-align:center;max-width:100%;word-break:break-word;line-height:1.2}
@@ -249,15 +250,17 @@ function fit() {
 function openForm(p) {
   if (!subs.length) { tab = 'subs'; render(); return toast('Primero creá una subcanalización') }
   const d = p && by(p);
-  form = d ? { ...d, com: d.com || '', orig: d.puerta } : { puerta: p || PUERTAS.find(x => !by(x)) || PUERTAS[0], subId: subs[0].id, estado: 'EN_ESPERA', prio: 'NORMAL', com: '', orig: null };
+  form = d ? { ...d, com: d.com || '', fola: (subOf(d.subId) || {}).ola || '', orig: d.puerta } : { puerta: p || PUERTAS.find(x => !by(x)) || PUERTAS[0], subId: subs[0].id, estado: 'EN_ESPERA', prio: 'NORMAL', com: '', fola: '', orig: null };
   drawForm();
 }
 function drawForm() {
   const f = form, m = $('#modal'); m.hidden = false;
+  const fl = subs.filter(s => !f.fola || s.ola === f.fola).sort((a, b) => a.nombre.localeCompare(b.nombre));
   m.innerHTML = `<div class="mb"><h2>${f.orig ? 'Puerta ' + f.orig : 'Nuevo despacho'}</h2>` +
     `<div><div class="lb">PUERTA</div><select class="fld" data-f="puerta">${PUERTAS.map(p => `<option value="${p}" ${p === f.puerta ? 'selected' : ''}>${p}</option>`).join('')}</select></div>` +
-    `<div><div class="lb">SUBCANALIZACIÓN</div><select class="fld" data-f="subId">${subs.map(s => `<option value="${s.id}" ${s.id === f.subId ? 'selected' : ''}>${esc(s.nombre)} · ${s.ola}</option>`).join('')}</select></div>` +
-    `<div><div class="lb">ESTADO</div><div class="g2">${Object.entries(ESTADOS).map(([k, e]) => `<button class="eb ${f.estado === k ? 's' : ''}" style="--c:${e[1]}" data-act="fe" data-v="${k}">${e[0]}</button>`).join('')}</div></div>` +
+    `<div><div class="lb">OLA</div><div class="ol5">${[['', 'TODAS', '#94a3b8'], ...Object.entries(OLAS).map(([k, c]) => [k, k, c])].map(([k, t, c]) => `<button class="ob ${f.fola === k ? 's' : ''}" style="--c:${c}" data-act="fo" data-v="${k}">${t}</button>`).join('')}</div></div>` +
+    `<div><div class="lb">SUBCANALIZACIÓN${f.fola ? ' · OLA ' + f.fola : ''}</div><select class="fld" data-f="subId">${fl.length ? fl.map(s => `<option value="${s.id}" ${s.id === f.subId ? 'selected' : ''}>${esc(s.nombre)} · ${s.ola}</option>`).join('') : '<option value="">No hay subs de esta ola</option>'}</select></div>` +
+    `<div><div class="lb">ESTADO</div><div class="g2">${Object.entries(ESTADOS).map(([k, e]) => `<button class="eb ${f.estado === k ? 's' : ''}" style="--c:${e[1]}" data-act="fe" data-v="${k}">${e[0]}</button>`).join('')}</div>${f.estado === 'DESPACHADO' ? '<div class="em" style="margin-top:6px;font-size:13px">Al guardar, la puerta queda libre para un nuevo despacho.</div>' : ''}</div>` +
     `<div><div class="lb">PRIORIDAD</div><div class="g3">${Object.entries(PRIOS).map(([k, p]) => `<button class="eb ${f.prio === k ? 's' : ''}" style="--c:${p[2]}" data-act="fp" data-v="${k}">${p[0]} ${p[1]}</button>`).join('')}</div></div>` +
     `<div><div class="lb">COMENTARIO ADICIONAL (OPCIONAL)</div><input class="fld" id="cm" maxlength="60" style="font-size:17px" placeholder="Ej: necesito 6 pallets" value="${esc(f.com)}"></div>` +
     `<div class="rw">${f.orig ? '<button class="b no" data-act="fdel">Quitar</button>' : ''}<button class="b gr" style="flex:1" data-act="fx">Cancelar</button><button class="b ok" style="flex:1" data-act="fok">Guardar</button></div></div>`;
@@ -286,13 +289,18 @@ const A = {
   sola: t => { const s = subOf(t.dataset.id); s.ola = t.dataset.o; DB.setSub(s); render() },
   delsub: t => { const s = subOf(t.dataset.id), u = desp.find(d => d.subId === s.id);
     if (u) return toast(`${s.nombre} está en uso en la puerta ${u.puerta}`); subs = subs.filter(x => x !== s); DB.delSub(s.id); render() },
+  fo: t => { form.fola = t.dataset.v; const l = subs.filter(x => !form.fola || x.ola === form.fola);
+    if (!l.some(x => x.id === form.subId)) form.subId = l.length ? l[0].id : ''; drawForm() },
   fe: t => { form.estado = t.dataset.v; drawForm() }, fp: t => { form.prio = t.dataset.v; drawForm() }, fx: closeForm,
-  fok: () => { const { orig, ...d } = form; d.puerta = Number(d.puerta); d.com = (d.com || '').trim();
+  fok: () => { if (!form.subId) return toast('Elegí una subcanalización'); const { orig, fola, ...d } = form; d.puerta = Number(d.puerta); d.com = (d.com || '').trim();
     if (orig && orig !== d.puerta) { desp = desp.filter(x => x.puerta !== orig); DB.delDesp(orig) }
+    if (d.estado === 'DESPACHADO') { // despachado = la puerta se libera sola
+      desp = desp.filter(x => x.puerta !== d.puerta); DB.delDesp(d.puerta); closeForm(); render(); return toast(`Puerta ${d.puerta} liberada ✔`)
+    }
     desp = [...desp.filter(x => x.puerta !== d.puerta), d]; DB.setDesp(d); closeForm(); render() },
   fdel: () => { desp = desp.filter(x => x.puerta !== form.orig); DB.delDesp(form.orig); closeForm(); render() },
 };
-const EDITA = ['edit', 'new', 'nola', 'addsub', 'sola', 'delsub', 'fe', 'fp', 'fok', 'fdel'];
+const EDITA = ['edit', 'new', 'nola', 'addsub', 'sola', 'delsub', 'fo', 'fe', 'fp', 'fok', 'fdel'];
 document.addEventListener('click', e => { const t = e.target.closest('[data-act]'); if (!t || !A[t.dataset.act]) return;
   if (EDITA.includes(t.dataset.act) && !canEdit) return toast('Modo solo lectura: ingresá como editor');
   A[t.dataset.act](t) });
