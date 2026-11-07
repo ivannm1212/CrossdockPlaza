@@ -83,6 +83,12 @@ option{background:#111;color:#fff}
 #tick[hidden]{display:none}
 #tick span{display:inline-block;white-space:nowrap;background:var(--acc);color:#00140a;font-size:34px;font-weight:900;padding:10px 32px;border-radius:999px;box-shadow:0 8px 30px rgba(0,224,122,.45);transform:translateX(100vw);animation:tick var(--per,20s) linear infinite}
 @keyframes tick{0%{transform:translateX(100vw)}65%,100%{transform:translateX(-100%)}}
+.aud{display:flex;align-items:center;justify-content:space-between;gap:10px;border:2px solid color-mix(in srgb,var(--c) 85%,transparent);border-radius:20px;background:linear-gradient(160deg,rgba(255,255,255,.07),rgba(255,255,255,.02));padding:12px 14px;margin-bottom:10px}
+.ac2{display:block;font-size:24px;font-weight:800;letter-spacing:.02em;word-break:break-all}
+.am{font-size:12px;font-weight:800;color:var(--c)}
+.acs{display:flex;flex-wrap:wrap;margin-bottom:12px}
+.ach{display:inline-block;border:2px solid var(--c);border-radius:999px;padding:6px 18px;font-size:30px;font-weight:800;background:color-mix(in srgb,var(--c) 14%,transparent);margin:0 8px 8px 0}
+.ach small{font-size:14px;color:var(--c);font-weight:800;margin-left:6px}
 </style>
 </head>
 <body>
@@ -128,12 +134,13 @@ const LEYENDA_CADA_S = 20; // cada cuántos segundos vuelve a pasar
 // ---------- Estado ----------
 const LS = { get: (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d } catch { return d } }, set: (k, v) => localStorage.setItem(k, JSON.stringify(v)) };
 let subs = LS.get('cd_subs', []), desp = LS.get('cd_despachos', []), cfg = LS.get('cd_config', { sound: true });
+let aud = LS.get('cd_aud', []), audOla = LS.get('cd_aud_ola', ''), audDraft = ''; // auditoría de pallets
 let tab = 'puertas', form = null, ns = { nombre: '', ola: 'ROJA' }, tv = location.hash === '#/tv', inst = null, prev = null, online = false, canEdit = true;
 
 // ---------- Capa de datos (local + Firebase opcional) ----------
 const DB = {
   fb: null,
-  saveLocal() { LS.set('cd_subs', subs); LS.set('cd_despachos', desp); LS.set('cd_config', cfg) },
+  saveLocal() { LS.set('cd_subs', subs); LS.set('cd_despachos', desp); LS.set('cd_config', cfg); LS.set('cd_aud', aud) },
   async init() {
     if (!FIREBASE_CONFIG) return;
     try {
@@ -151,6 +158,7 @@ const DB = {
         if (!listening) {
           listening = true;
           F.onSnapshot(F.collection(db, 'subs'), s => { subs = s.docs.map(d => d.data()); this.saveLocal(); render() }, err);
+          F.onSnapshot(F.collection(db, 'auditoria'), s => { aud = s.docs.map(d => d.data()); this.saveLocal(); render() }, err);
           F.onSnapshot(F.collection(db, 'despachos'), s => {
             desp = s.docs.map(d => d.data()); this.saveLocal();
             if (first) { prev = null; first = false } // la primera carga no suena
@@ -168,6 +176,8 @@ const DB = {
   delSub(id) { this.saveLocal(); if (this.fb) this.fb.F.deleteDoc(this.fb.F.doc(this.fb.db, 'subs', id)).catch(this.deny) },
   setDesp(d) { this.saveLocal(); if (this.fb) this.fb.F.setDoc(this.fb.F.doc(this.fb.db, 'despachos', String(d.puerta)), d).catch(this.deny) },
   delDesp(p) { this.saveLocal(); if (this.fb) this.fb.F.deleteDoc(this.fb.F.doc(this.fb.db, 'despachos', String(p))).catch(this.deny) },
+  setAud(a) { this.saveLocal(); if (this.fb) this.fb.F.setDoc(this.fb.F.doc(this.fb.db, 'auditoria', a.id), a).catch(this.deny) },
+  delAud(id) { this.saveLocal(); if (this.fb) this.fb.F.deleteDoc(this.fb.F.doc(this.fb.db, 'auditoria', id)).catch(this.deny) },
 };
 
 // ---------- Utilidades ----------
@@ -176,6 +186,7 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': 
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now() + '-' + Math.random().toString(36).slice(2));
 const subOf = id => subs.find(s => s.id === id), by = p => desp.find(d => d.puerta === p);
 const clock = () => new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+const hhmm = () => new Date().toTimeString().slice(0, 5);
 let ctx;
 function beeps() {
   try {
@@ -208,6 +219,23 @@ function card(p, d, isTv) {
 }
 const olaPick = (v, act, id) => `<div class="ol">${Object.entries(OLAS).map(([k, c]) => `<button class="ob ${v === k ? 's' : ''}" style="--c:${c}" data-act="${act}" data-o="${k}" ${id ? `data-id="${id}"` : ''}>${k}</button>`).join('')}</div>`;
 
+function audView() {
+  const al = [...aud].sort((a, b) => b.ts - a.ts);
+  return `<div class="panel"><div class="lb">OLA DE LOS PALLETS</div>${olaPick(audOla, 'aola')}` +
+    `<div class="lb">CÓDIGO DE PALLET (escaneá, o pegá varios separados por espacio o coma)</div>` +
+    `<input class="fld" id="ac" autocomplete="off" autocapitalize="characters" placeholder="Código de pallet" value="${esc(audDraft)}">` +
+    `<button class="b on" data-act="addaud">+ Agregar a auditoría</button></div>` +
+    `<div class="lb" style="margin:6px 2px 10px">EN AUDITORÍA (${al.length})</div>` +
+    (al.length ? al.map(a => `<div class="aud" style="--c:${OLAS[a.ola] || '#94a3b8'}"><div><b class="ac2">${esc(a.codigo)}</b><span class="am">${esc(a.ola)} · ${esc(a.hora || '')}</span></div>` +
+      `<button class="b gr" data-act="delaud" data-id="${esc(a.id)}">✔ Terminar</button></div>`).join('') : '<p class="em">No hay pallets en auditoría.</p>');
+}
+function audTv() {
+  const al = [...aud].sort((a, b) => b.ts - a.ts); if (!al.length) return '';
+  return `<div class="ur" style="background:#0ea5e9;box-shadow:0 0 24px rgba(14,165,233,.5)">🔎 AUDITORÍA EN CURSO</div><div class="acs">` +
+    al.slice(0, 12).map(a => `<span class="ach" style="--c:${OLAS[a.ola] || '#94a3b8'}">${esc(a.codigo)} <small>${esc(a.ola)}</small></span>`).join('') +
+    (al.length > 12 ? `<span class="ach" style="--c:#94a3b8">+${al.length - 12} más</span>` : '') + `</div>`;
+}
+
 function render() {
   if (!canEdit && tab === 'subs') tab = 'puertas';
   detectCalls();
@@ -217,11 +245,14 @@ function render() {
   let h = `<div class="hd"><h1>CROSSDOCK DESPACHO ${online ? '· EN LÍNEA' : ''}${online && !canEdit ? ' · SOLO LECTURA' : ''}</h1><span class="ck">${clock()}</span></div><div class="bar-t">` +
     `<button class="b ${tab === 'puertas' ? 'on' : ''}" data-act="tab" data-t="puertas">Puertas</button>` +
     (canEdit ? `<button class="b ${tab === 'subs' ? 'on' : ''}" data-act="tab" data-t="subs">Subcanalizaciones</button>` : '') +
+    `<button class="b ${tab === 'aud' ? 'on' : ''}" data-act="tab" data-t="aud">🔎 Auditoría</button>` +
     `<button class="b" data-act="snd">${cfg.sound ? '🔔 Sonido' : '🔕 Mudo'}</button><button class="b" data-act="tv">📺 TV</button>` +
     (inst ? `<button class="b ok" data-act="inst">⬇ Instalar</button>` : '') +
     (FIREBASE_CONFIG && online ? (canEdit ? `<button class="b" data-act="logout">🔓 Salir (editor)</button>` : `<button class="b on" data-act="login">🔒 Editar</button>`) : '') + `</div>`;
   if (tab === 'puertas') {
     h += `<div class="grid">${PUERTAS.map(p => card(p, by(p))).join('')}</div>${canEdit ? '<button class="fab" data-act="new">+ Nuevo despacho</button>' : ''}`;
+  } else if (tab === 'aud') {
+    h += audView();
   } else {
     h += `<div class="panel"><input class="fld" id="ns" style="text-transform:uppercase" maxlength="18" placeholder="Nueva sub (ej: SCO1)" value="${esc(ns.nombre)}">` +
       olaPick(ns.ola, 'nola') + `<button class="b on" data-act="addsub">+ Agregar</button></div>`;
@@ -234,7 +265,7 @@ function render() {
 function renderTv() {
   const urg = desp.filter(d => d.prio === 'URGENCIA' && d.estado !== 'DESPACHADO').sort((a, b) => a.puerta - b.puerta);
   $('#tv').innerHTML = `<div class="tvc"><div class="tvh"><span class="t">CROSSDOCK DESPACHO</span><span class="ck">${clock()}</span><button class="b" style="background:transparent" data-act="xtv">ESC · Salir</button></div>` +
-    (urg.length ? `<div class="ur">!! URGENCIAS</div><div class="grid" style="margin-bottom:16px">${urg.map(d => card(d.puerta, d, true)).join('')}</div>` : '') +
+    (urg.length ? `<div class="ur">!! URGENCIAS</div><div class="grid" style="margin-bottom:16px">${urg.map(d => card(d.puerta, d, true)).join('')}</div>` : '') + audTv() +
     `<div class="grid">${PUERTAS.map(p => card(p, by(p), true)).join('')}</div></div>`;
 }
 
@@ -269,6 +300,19 @@ const closeForm = () => { form = null; $('#modal').hidden = true };
 
 // ---------- Eventos ----------
 const A = {
+  aola: t => { audDraft = ($('#ac') || {}).value ?? audDraft; audOla = t.dataset.o; LS.set('cd_aud_ola', audOla); render(); const i = $('#ac'); if (i) i.focus() },
+  addaud: () => {
+    const v = (($('#ac') || {}).value || '').trim();
+    if (!audOla) return toast('Primero elegí la ola');
+    if (!v) return toast('Escribí o escaneá un código');
+    const cods = [...new Set(v.split(/[\s,;]+/).filter(Boolean).map(c => c.toUpperCase()))];
+    const nuevos = cods.filter(c => !aud.some(a => a.codigo === c));
+    if (!nuevos.length) return toast('Ese pallet ya está en auditoría');
+    nuevos.forEach(c => { const a = { id: uid(), codigo: c, ola: audOla, ts: Date.now(), hora: hhmm() }; aud.push(a); DB.setAud(a) });
+    audDraft = ''; render(); const i = $('#ac'); if (i) i.focus();
+    toast(`${nuevos.length} pallet${nuevos.length > 1 ? 's' : ''} en auditoría ✔`);
+  },
+  delaud: t => { const id = t.dataset.id; aud = aud.filter(x => x.id !== id); DB.delAud(id); render() },
   login: () => { form = null; const m = $('#modal'); m.hidden = false;
     m.innerHTML = `<div class="mb"><h2>Ingreso de editores</h2><div><div class="lb">CORREO</div><input class="fld" id="lgE" type="email" autocomplete="username"></div>` +
       `<div><div class="lb">CLAVE</div><input class="fld" id="lgP" type="password" autocomplete="current-password"></div>` +
@@ -304,10 +348,10 @@ const EDITA = ['edit', 'new', 'nola', 'addsub', 'sola', 'delsub', 'fo', 'fe', 'f
 document.addEventListener('click', e => { const t = e.target.closest('[data-act]'); if (!t || !A[t.dataset.act]) return;
   if (EDITA.includes(t.dataset.act) && !canEdit) return toast('Modo solo lectura: ingresá como editor');
   A[t.dataset.act](t) });
-document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'lgP') A.dologin() });
+document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'lgP') A.dologin(); if (e.key === 'Enter' && e.target.id === 'ac') A.addaud() });
 $('#modal').addEventListener('click', e => { if (e.target.id === 'modal') closeForm() });
 document.addEventListener('change', e => { const k = e.target.dataset?.f; if (k && form) form[k] = k === 'puerta' ? Number(e.target.value) : e.target.value });
-document.addEventListener('input', e => { if (e.target.id === 'ns') ns.nombre = e.target.value; if (e.target.id === 'cm' && form) form.com = e.target.value });
+document.addEventListener('input', e => { if (e.target.id === 'ns') ns.nombre = e.target.value; if (e.target.id === 'cm' && form) form.com = e.target.value; if (e.target.id === 'ac') audDraft = e.target.value });
 
 function exitTv() {
   if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
@@ -318,7 +362,7 @@ addEventListener('keydown', e => { if (e.key === 'Escape' && tv) exitTv() });
 document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement && tv) exitTv() });
 addEventListener('beforeinstallprompt', e => { e.preventDefault(); inst = e; render() });
 addEventListener('storage', e => { // sincroniza pestañas del mismo dispositivo
-  if (e.key === 'cd_despachos' || e.key === 'cd_subs') { subs = LS.get('cd_subs', []); desp = LS.get('cd_despachos', []); render() } });
+  if (e.key === 'cd_despachos' || e.key === 'cd_subs' || e.key === 'cd_aud') { subs = LS.get('cd_subs', []); desp = LS.get('cd_despachos', []); aud = LS.get('cd_aud', []); render() } });
 setInterval(() => document.querySelectorAll('.ck').forEach(n => n.textContent = clock()), 1000);
 
 $('#tick span').textContent = LEYENDA_TV; $('#tick').style.setProperty('--per', LEYENDA_CADA_S + 's');
